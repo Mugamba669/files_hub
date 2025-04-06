@@ -1,20 +1,16 @@
+import 'dart:developer';
 import 'dart:io';
 import 'package:files/services/FileSystemService.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:lottie/lottie.dart';
 
 import 'ripple.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // var status = await Permission.storage.status;
-  // if (!status.isGranted) {
-  //   await Permission.storage.request();
-  Directory? extDir = await getExternalStorageDirectory();
-  if (extDir != null && await extDir.exists()) {
+  Directory? extDir = Directory('/storage/emulated/0');
+  if (await extDir.exists()) {
     print('External storage directory: ${extDir.path}');
   } else {
     print('External storage directory not found');
@@ -23,21 +19,29 @@ void main() async {
   runApp(MyApp());
 }
 
+var navigatorKey = GlobalKey<NavigatorState>();
+
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'File Sharing via Web',
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(),
+      home: const MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _MyHomePageState createState() => _MyHomePageState();
 }
 
@@ -57,13 +61,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     _requestPermissions();
     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1500),
     );
     _animation = Tween<double>(begin: 0, end: 1).animate(_animationController);
 
     _rippleAnimationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2000),
     )..repeat();
   }
 
@@ -71,7 +75,11 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   Future<void> _requestPermissions() async {
     if (Platform.isAndroid) {
       if (await Permission.manageExternalStorage.isGranted) {
-        print("Manage external storage permission granted");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Manage external storage permission granted"),
+          ),
+        );
       } else {
         if (await Permission.manageExternalStorage.request().isGranted) {
           print("Manage external storage permission granted after request");
@@ -86,7 +94,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
   // Start HTTP server
   Future<void> _startServer() async {
-    var file_service = FilesystemService();
+    var fileService = FilesystemService();
     try {
       // Get the local IP address
       for (var interface in await NetworkInterface.list()) {
@@ -106,8 +114,9 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         _qrData = 'http://$_ipAddress:8080';
         _status = 'Server running on http://$_ipAddress:8080';
       });
+      log("server running ${_server?.address}");
       _animationController.repeat(reverse: true);
-      Future.delayed(Duration(seconds: 2), () {
+      Future.delayed(const Duration(seconds: 2), () {
         setState(() {
           _status = 'Connected';
         });
@@ -115,7 +124,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       });
       // Handle incoming requests
       _server?.listen((HttpRequest request) async {
-        file_service.handleFileRequests(request);
+        fileService.handleFileRequests(request);
 
 // Main request handler
       });
@@ -168,6 +177,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               const SizedBox(height: 40),
               _buildQRSection(),
               const SizedBox(height: 40),
+              _qrData.isNotEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 20),
+                      child: Text(
+                        'Server running on http://$_ipAddress:8080',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyLarge
+                            ?.apply(color: Colors.green),
+                      ),
+                    )
+                  : const Text(''),
               _buildControlButtons(),
             ],
           ),
@@ -242,12 +263,12 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             color: Colors.green,
             animationValue: _rippleAnimationController.value,
           ),
-          child: SizedBox(
+          child: const SizedBox(
             height: 80,
             width: 80,
           ),
         ),
-        Icon(Icons.check_circle, size: 60, color: Colors.green),
+        const Icon(Icons.check_circle, size: 60, color: Colors.green),
       ],
     );
   }

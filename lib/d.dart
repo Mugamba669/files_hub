@@ -1,7 +1,11 @@
+// ignore_for_file: library_private_types_in_public_api
+
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class FileSharing extends StatefulWidget {
+  const FileSharing({super.key});
+
   @override
   _FileSharingState createState() => _FileSharingState();
 }

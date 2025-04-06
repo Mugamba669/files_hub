@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:developer';
 // import 'dart:developer';
+import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 import 'dart:io';
 import '../main.dart';
@@ -7,9 +9,9 @@ import '../main.dart';
 class FilesystemService {
   Future<void> handleFileRequests(HttpRequest request) async {
     try {
-      if (request.uri.path == '/api/files') {
+      if (request.uri.path == '/') {
         await handleFileListRequest(request);
-      } else if (request.uri.path == '/api/download') {
+      } else if (request.uri.path == '/download') {
         await handleFileDownloadRequest(request);
       } else {
         throw HttpException('Endpoint not found', HttpStatus.notFound);
@@ -20,14 +22,33 @@ class FilesystemService {
   }
 
   Future<void> handleFileListRequest(HttpRequest request) async {
+    // Add CORS headers
+    request.response.headers
+        .add('Access-Control-Allow-Origin', '*'); // Or your React app's origin
+    request.response.headers
+        .add('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    request.response.headers
+        .add('Access-Control-Allow-Headers', 'Origin, Content-Type');
+
+    // Handle preflight OPTIONS request
+    if (request.method == 'OPTIONS') {
+      request.response.statusCode = HttpStatus.ok;
+      await request.response.close();
+      return;
+    }
     const String baseStoragePath = '/storage/emulated/0';
     String? requestedPath = request.uri.queryParameters['path'];
     String currentPath = requestedPath ?? baseStoragePath;
 
     currentPath = path.normalize(currentPath);
-    if (!isPathSafe(baseStoragePath, currentPath)) {
-      throw HttpException('Access denied: Invalid path', HttpStatus.forbidden);
-    }
+    var context = navigatorKey.currentContext;
+    log("currentPath $currentPath");
+    ScaffoldMessenger.of(context!).showSnackBar(
+      SnackBar(content: Text('currentPath $currentPath')),
+    );
+    // if (!isPathSafe(baseStoragePath, currentPath)) {
+    //   throw HttpException('Access denied: Invalid path', HttpStatus.forbidden);
+    // }
 
     Directory dir = Directory(currentPath);
     if (!await dir.exists()) {
@@ -96,6 +117,13 @@ class FilesystemService {
   }
 
   Future<void> handleFileDownloadRequest(HttpRequest request) async {
+    // Add CORS headers
+    request.response.headers
+        .add('Access-Control-Allow-Origin', '*'); // Or your React app's origin
+    request.response.headers
+        .add('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    request.response.headers
+        .add('Access-Control-Allow-Headers', 'Origin, Content-Type');
     String? filePath = request.uri.queryParameters['file'];
     if (filePath == null) {
       throw HttpException('No file specified', HttpStatus.badRequest);
